@@ -51,8 +51,6 @@ public class MineSweeperIterator {
         return player.getCell(x, y);
     }
 
-    // falseが1つでもあればfalse
-
     /**
      * 全マスにラムダ式を適用する
      * @param fn ラムダ式
@@ -77,8 +75,6 @@ public class MineSweeperIterator {
         y = tmp_y;
         return success;
     }
-
-    // trueなものを数える
 
     /**
      * 全マスにラムダ式を適用し，trueなものを数える

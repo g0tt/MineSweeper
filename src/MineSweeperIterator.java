@@ -10,13 +10,16 @@ public class MineSweeperIterator {
      * 周囲探索用ラムダ式
      */
     // 確定マス以外ならtrue
-    public static BoardFunction<Boolean> isFixed = (final int x, final int y, final Player player, double[][] prob_memory) -> prob_memory[x][y] == 100;
+    public static BoardFunction<Boolean> isFixed = (final int x, final int y, final Player player, double[][] prob_memory)
+            -> prob_memory[x][y] == 100;
 
     // 開いているマスならtrue
-    public static BoardFunction<Boolean> isOpen = (final int x, final int y, final Player player, double[][] prob_memory) -> player.getCell(x, y) != -1;
+    public static BoardFunction<Boolean> isOpen = (final int x, final int y, final Player player, double[][] prob_memory)
+            -> player.getCell(x, y) != -1;
 
     // 未オープンかつ未確定ならtrue
-    public static BoardFunction<Boolean> isNotOpenNorFixed = (final int x, final int y, final Player player, double[][] prob_memory) -> prob_memory[x][y] != 100 && player.getCell(x, y) == -1;
+    public static BoardFunction<Boolean> isNotOpenNorFixed = (final int x, final int y, final Player player, double[][] prob_memory)
+            -> prob_memory[x][y] != 100 && player.getCell(x, y) == -1;
 
     // 未オープンだったら確定させる 変化があったらfalseなことに注意
     public static BoardFunction<Boolean> fixIfNotOpened = (final int x, final int y, final Player player, double[][] prob_memory) -> {
@@ -45,7 +48,7 @@ public class MineSweeperIterator {
     }
 
     public void print() {
-        System.out.println("MineSweeperIterator::(x, y) = (" + x + ", " + y + ")");
+        System.out.println("(x, y) = (" + x + ", " + y + ")");
     }
 
     public int getCell() {
@@ -181,7 +184,7 @@ public class MineSweeperIterator {
      */
     @FunctionalInterface
     public interface BoardFunction<T> {
-        public T run(int x, int y, Player player, double[][] prob_memory);
+        T run(int x, int y, Player player, double[][] prob_memory);
     }
 
 }

@@ -6,56 +6,38 @@ import jp.ne.kuramae.torix.lecture.ms.core.Player;
  */
 public class ProbPlayer extends Player {
 
-    /**
-     * 爆弾確率のメモ
-     * 0-100 or -1(計算前)
-     */
-    private double[][] prob_memory;
+    private Board board;
 
     static public void main(String[] args) {
         Player player = new ProbPlayer();
 
         MineSweeper mineSweeper = new MineSweeper(2);
-        mineSweeper.setRandomSeed(6671);
+        mineSweeper.setRandomSeed(3135);
 
         mineSweeper.start(player);
     }
 
     @Override
     protected void start() {
-        // 確率メモ初期化
-        prob_memory = new double[getWidth()][getHeight()];
-        for (int y = 0; y < getHeight(); y++) {
-            for (int x = 0; x < getWidth(); x++) {
-                prob_memory[x][y] = -1;
-            }
-        }
+        board = new Board(getWidth(), getHeight());
+        board.initialize();
 
-        open(getWidth() / 2, getHeight() / 2);
+        board.open(getWidth() / 2, getHeight() / 2, this);
 
         for (int i = 0; i < 50; i++) {
             searchFixedCells();
             if (searchSafeCells() == 0) {
                 System.out.println("安全なマスがないよ");
                 searchEdges();
-                printBoard();
+                board.print();
                 break;
             }
 
             // 安全なマスを開ける
-            for (int y = 0; y < getHeight(); y++) {
-                for (int x = 0; x < getWidth(); x++) {
-                    if (prob_memory[x][y] == 0) {
-                        System.out.println("Open: x = " + x + ", y = " + y);
-                        open(x, y);
-                    }
-                }
-            }
-            for (int y = 0; y < getHeight(); y++) {
-                for (int x = 0; x < getWidth(); x++) {
-                    prob_memory[x][y] = -1;
-                }
-            }
+            board.forEach((iter) -> {
+                if (iter.isSafe()) iter.open();
+                return true;
+            }, this);
         }
 
         System.exit(0);
@@ -67,33 +49,41 @@ public class ProbPlayer extends Player {
     private void searchFixedCells() {
 
         while(true) {
-            MineSweeperIterator iter = new MineSweeperIterator(0, 0, this);
-
-            if (iter.forEach((here) -> {
-                int n = here.getCell();
-                if (n == -1) return true;
-                int num_not_fixed = here.count_around(MineSweeperIterator.isNotOpenNorFixed, prob_memory);
-                int num_fixed = here.count_around(MineSweeperIterator.isFixed, prob_memory);
+            if (board.forEach((here) -> {
+                if (here.isFixed()) return true;
+                int n = here.getCell().get();
+                int num_not_fixed = here.count_around((i) -> i.getCell().isNotOpenNorFixed());
+                int num_fixed = here.count_around((i) -> i.isFixed());
 
                 // 残り爆弾の数と未オープンのマスの数が同じならフラグを立てる
                 if (num_not_fixed != 0 && n - num_fixed == num_not_fixed) {
-                    return here.apply_around(MineSweeperIterator.fixIfNotOpened, prob_memory);
+                    return here.apply_around((i) -> {
+                        // 未オープンだったら確定させる 変化があったらfalseなことに注意
+                        boolean not_changed = true;
+                        if (!i.isOpen() && !i.isFixed()) {
+                            i.getCell().fix();
+                            not_changed = false;
+                        }
+                        return not_changed;
+                    });
                 }
                 return true;
-            })) break;
+            }, this)) break;
         }
     }
 
-    private EdgeCellSet searchEdges() {
-        MineSweeperIterator iter = new MineSweeperIterator(0, 0, this);
-
-        return iter.map((here) -> {
-            if (here.getCell() == -1 && !here.isFixed(prob_memory) && here.count_around(MineSweeperIterator.isOpen, prob_memory) != 0) {
-                return new EdgeCell(here);
+    /**
+     * エッジの探索
+     * @return
+     */
+    private void searchEdges() {
+        board.forEach((here) -> {
+            if (!here.isOpen() && !here.isFixed() && here.count_around((i) -> i.isOpen()) != 0) {
+                return here.getCell().setEdge();
             } else {
-                return null;
+                return false;
             }
-        });
+        }, this);
     }
 
     /**
@@ -101,65 +91,20 @@ public class ProbPlayer extends Player {
      * @return int 安全なマスがあるなら正
      */
     private int searchSafeCells() {
-        MineSweeperIterator iter = new MineSweeperIterator(0, 0, this);
-
-        return iter.count((here) -> {
-            int n = here.getCell();
+        return board.count((here) -> {
+            int n = here.getCell().get();
             if (n == -1 || n == 0) return false;
-            int num_fixed = here.count_around(MineSweeperIterator.isFixed, prob_memory);
+            int num_fixed = here.count_around((i) -> i.isFixed());
             // 安全なマスが存在するか
-            return (n == num_fixed && !here.apply_around(MineSweeperIterator.setSafeIfNotFixed, prob_memory));
-        });
-    }
-
-    /**
-     * 確率メモを可視化
-     */
-    public void printProbMemory() {
-        String res = "";
-        for (int y = 0; y < prob_memory[0].length; y++) {
-            if (y != 0) res += "\n";
-            for (int x = 0; x < prob_memory.length; x++) {
-                if (x != 0) res += " ";
-                if (prob_memory[x][y] == 100) {
-                    res += "*";
-                } else if (prob_memory[x][y] == 0) {
-                    res += "o";
-                } else {
-                    res += "-";
+            return (n == num_fixed && !here.apply_around((i) -> {
+                // 確定マスでなければ安全とする
+                if (!i.isFixed() && !i.isOpen()) {
+                    i.getCell().setSafe();
+                    return false;
                 }
-            }
-        }
-        res += "\n";
-
-        System.out.println(res);
-    }
-
-    public void printBoard() {
-        String res = "";
-        for (int y = 0; y < prob_memory[0].length; y++) {
-            if (y != 0) res += "\n";
-            for (int x = 0; x < prob_memory.length; x++) {
-                if (x != 0) res += " ";
-                if (prob_memory[x][y] == 100) {
-                    res += "*";
-                } else if (prob_memory[x][y] == 0) {
-                    res += "o";
-                } else {
-                    int cell = getCell(x, y);
-                    if (cell == -1 && searchEdges().contains(new EdgeCell(x, y, this))) {
-                        res += "/";
-                    } else if (cell == -1) {
-                        res += ".";
-                    } else {
-                        res += cell;
-                    }
-                }
-            }
-        }
-        res += "\n";
-
-        System.out.println(res);
+                return true;
+            }));
+        }, this);
     }
 
     /**
@@ -167,14 +112,7 @@ public class ProbPlayer extends Player {
      * @return count
      */
     private int countNotFixedBombs() {
-        int fixed_bombs = 0;
-        for (int y = 0; y < getHeight(); y++) {
-            for (int x = 0; x < getWidth(); x++) {
-                if (prob_memory[x][y] == 100) {
-                    fixed_bombs++;
-                }
-            }
-        }
+        int fixed_bombs = board.count((i) -> i.isFixed(), this);
         return getBombNum() - fixed_bombs;
     }
 

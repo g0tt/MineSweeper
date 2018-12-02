@@ -2,10 +2,9 @@ import jp.ne.kuramae.torix.lecture.ms.core.Player;
 import java.util.function.Function;
 
 public class MineSweeperIterator {
-
-    private int x;
-    private int y;
-    private Player player;
+    protected int x;
+    protected int y;
+    protected Player player;
 
     /**
      * 周囲探索用ラムダ式

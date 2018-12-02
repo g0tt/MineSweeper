@@ -1,20 +1,19 @@
-import jp.ne.kuramae.torix.lecture.ms.core.Cell;
+import jp.ne.kuramae.torix.lecture.ms.core.Player;
+
 import java.util.Objects;
 
-public class EdgeCell extends Cell implements Comparable<EdgeCell> {
-    private int x;
-    private int y;
+public class EdgeCell extends MineSweeperIterator implements Comparable<EdgeCell> {
     public EdgeCell next;
     public EdgeCell prev;
 
-    public EdgeCell(int x, int y) {
-        super(x, y);
+    public EdgeCell(int x, int y, Player player) {
+        super(x, y, player);
         this.x = x;
         this.y = y;
     }
 
-    public EdgeCell(int x, int y, EdgeCell prev) {
-        this(x, y);
+    public EdgeCell(int x, int y, Player player, EdgeCell prev) {
+        this(x, y, player);
         this.setPrev(prev);
     }
 
@@ -47,7 +46,7 @@ public class EdgeCell extends Cell implements Comparable<EdgeCell> {
     }
 
     public EdgeCell(MineSweeperIterator here) {
-        super(here.getX(), here.getY());
+        super(here.getX(), here.getY(), here.player);
     }
 
     public void setNext(EdgeCell next) {

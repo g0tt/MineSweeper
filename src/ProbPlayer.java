@@ -147,7 +147,7 @@ public class ProbPlayer extends Player {
                     res += "o";
                 } else {
                     int cell = getCell(x, y);
-                    if (cell == -1 && searchEdges().contains(new EdgeCell(x, y))) {
+                    if (cell == -1 && searchEdges().contains(new EdgeCell(x, y, this))) {
                         res += "/";
                     } else if (cell == -1) {
                         res += ".";

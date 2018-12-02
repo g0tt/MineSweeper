@@ -13,8 +13,11 @@ public class MineSweeperIterator {
     // 確定マス以外ならtrue
     public static BoardFunction<Boolean> isFixed = (final int x, final int y, final Player player, double[][] prob_memory) -> prob_memory[x][y] == 100;
 
+    // 開いているマスならtrue
+    public static BoardFunction<Boolean> isOpen = (final int x, final int y, final Player player, double[][] prob_memory) -> player.getCell(x, y) != -1;
+
     // 未オープンかつ未確定ならtrue
-    public static BoardFunction<Boolean> isNotOpenedNorFixed = (final int x, final int y, final Player player, double[][] prob_memory) -> prob_memory[x][y] != 100 && player.getCell(x, y) == -1;
+    public static BoardFunction<Boolean> isNotOpenNorFixed = (final int x, final int y, final Player player, double[][] prob_memory) -> prob_memory[x][y] != 100 && player.getCell(x, y) == -1;
 
     // 未オープンだったら確定させる 変化があったらfalseなことに注意
     public static BoardFunction<Boolean> fixIfNotOpened = (final int x, final int y, final Player player, double[][] prob_memory) -> {
@@ -28,13 +31,12 @@ public class MineSweeperIterator {
 
     // 確定マスでなければ安全とする
     public static BoardFunction<Boolean> setSafeIfNotFixed = (final int x, final int y, final Player player, double[][] prob_memory) -> {
-        boolean found = false;
         if (prob_memory[x][y] != 100 && player.getCell(x, y) == -1) {
             prob_memory[x][y] = 0;
-            found = true;
+            return false;
         }
 
-        return found;
+        return true;
     };
 
     public MineSweeperIterator(int x, int y, Player player) {
@@ -49,6 +51,18 @@ public class MineSweeperIterator {
 
     public int getCell() {
         return player.getCell(x, y);
+    }
+
+    public int getX() {
+        return x;
+    }
+
+    public int getY() {
+        return y;
+    }
+
+    public boolean isFixed(double[][] prob_memory) {
+        return prob_memory[this.getX()][this.getY()] == 100;
     }
 
     /**
@@ -74,6 +88,25 @@ public class MineSweeperIterator {
         x = tmp_x;
         y = tmp_y;
         return success;
+    }
+
+    /**
+     * 全マスにラムダ式を適用し，TreeSetを返す
+     * @param fn ラムダ式
+     * @return TreeSet<EdgeCell>
+     */
+    public EdgeCellSet map(Function<MineSweeperIterator, EdgeCell> fn) {
+        int tmp_x = x, tmp_y = y;
+        EdgeCellSet result = new EdgeCellSet();
+
+        for (y = 0; y < player.getHeight(); y++) {
+            for (x = 0; x < player.getWidth(); x++) {
+                result.add(fn.apply(this));
+            }
+        }
+        x = tmp_x;
+        y = tmp_y;
+        return result;
     }
 
     /**

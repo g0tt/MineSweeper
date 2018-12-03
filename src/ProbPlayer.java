@@ -65,6 +65,9 @@ public class ProbPlayer extends Player {
         if (!TEST_MODE) System.exit(0);
     }
 
+    /**
+     * これ以上開けない場合
+     */
     private void fallback() {
         int count = board.count((i) -> {
             if (!(i.isOpen() || i.isFixed())) {
@@ -76,8 +79,8 @@ public class ProbPlayer extends Player {
         rand_cnt = rand.nextInt(count);
         if (board.forEach((i) -> {
             if (!(i.isOpen() || i.isFixed())) {
-                i.player.rand_cnt--;
                 if (i.player.rand_cnt == 0) return i.open();
+                i.player.rand_cnt--;
             }
             return true;
         }, this)) {

@@ -1,6 +1,6 @@
 import jp.ne.kuramae.torix.lecture.ms.core.MineSweeper;
 import jp.ne.kuramae.torix.lecture.ms.core.Player;
-
+import java.util.ArrayList;
 import java.util.Random;
 
 /**
@@ -50,9 +50,10 @@ public class ProbPlayer extends Player {
                 System.out.println("安全なマスがないよ");
                 if (searchEdges()) {
                     linkBoxEdgeToNumEdge();
+                    queueNumEdge();
                 }
                 if (!TEST_MODE) {
-                    board.printEdges();
+                    //board.printEdges();
                     board.print();
                     break;
                 } else {
@@ -67,6 +68,99 @@ public class ProbPlayer extends Player {
             }, this);
         }
         if (!TEST_MODE) System.exit(0);
+    }
+
+    /**
+     * 全てのnumEdgeをbfs用のFIFOバッファに入れる
+     */
+    private void queueNumEdge() {
+        for (BoardCell cell : board.numEdge) {
+            BoardIterator iter = cell.getIterator(this);
+            int fixed_bombs = iter.count_around((i) -> i.isFixed());
+            int other_bombs = cell.get() - fixed_bombs;
+            ArrayList<Integer> localBitList = new ArrayList<>();
+            dfs(cell.relatedEdges, 0, 0, other_bombs, localBitList);
+            for (int localBitMap : localBitList) {
+                long edgeBitMap = createEdgeBitMap(cell, localBitMap);
+                long numEdgeFlg = (long)Math.pow(2, board.numEdge.headSet(cell).size());
+                System.out.println("edgeBitMap = " + edgeBitMap);
+                for (int i = -1; i < 2; i++) {
+                    for (int j = -1; j < 2; j++) {
+                        int x = cell.x + j, y = cell.y + i;
+                        iter.setXY(x, y);
+                        if (iter.isNumEdge()) {
+                            //queue.push(edgeBitMap, numEdgeFlg, x, y)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /*
+    private void bfs() {
+        queue.pop();
+        BoardIterator iter = cell.getIterator(this);
+        int fixed_bombs = iter.count_around((i) -> i.isFixed());
+        int other_bombs = cell.get() - fixed_bombs;
+        ArrayList<Integer> localBitList = new ArrayList<>();
+        dfs(cell.relatedEdges, 0, 0, other_bombs, localBitList);
+        for (int localBitMap : localBitList) {
+            long edgeBitMap = createEdgeBitMap(cell, localBitMap);
+            long numEdgeFlg = (long)Math.pow(2, board.numEdge.headSet(cell).size());
+            System.out.println("edgeBitMap = " + edgeBitMap);
+            for (int i = -1; i < 2; i++) {
+                for (int j = -1; j < 2; j++) {
+                    int x = cell.x + j, y = cell.y + i;
+                    iter.setXY(x, y);
+                    if (iter.isNumEdge()) {
+                        //queue.push(edgeBitMap, numEdgeFlg, x, y)
+                    }
+                }
+            }
+        }
+    }
+    */
+
+    /**
+     * localBitMapからedgeBitMapを作成する
+     * @param cell in numEdge
+     * @param localBitMap localBitMap
+     * @return edgeBitMap
+     */
+    private long createEdgeBitMap(BoardCell cell, int localBitMap) {
+        long edgeBitMap = 0;
+        int filter = 1;
+        for (BoardCell boxCell : cell.relatedEdges) {
+            if ((filter & localBitMap) > 0) {
+                edgeBitMap += Math.pow(2, board.boxEdge.headSet(boxCell).size());
+            }
+            filter *= 2;
+        }
+        return edgeBitMap;
+    }
+
+    /**
+     * relatedEdgesが取りうる爆弾配置パターンの深さ優先探索
+     * @param relatedEdges 考えるboxEdge
+     * @param binary_pattern bitパターン，1が爆弾
+     * @param i relatedEdgesのイテレータ
+     * @param bombs 残り爆弾の数
+     * @param patterns 記録用ArrayList
+     */
+    private void dfs(BoardCellSet relatedEdges, int binary_pattern, int i, int bombs, ArrayList<Integer> patterns) {
+        dfs(relatedEdges, binary_pattern, i, bombs, patterns, 0);
+    }
+    private void dfs(BoardCellSet relatedEdges, int binary_pattern, int i, int bombs, ArrayList<Integer> patterns, int initialize) {
+        //if (initialize != 0) FIXME
+        if (bombs == 0) {
+            patterns.add(binary_pattern);
+            return;
+        } else if (i >= relatedEdges.size()){
+            return;
+        }
+        dfs(relatedEdges, binary_pattern + (int)Math.pow(2, i), i + 1, bombs - 1, patterns);
+        dfs(relatedEdges, binary_pattern, i + 1, bombs, patterns);
     }
 
     /**
@@ -138,12 +232,13 @@ public class ProbPlayer extends Player {
         , this);
     }
 
+    /**
+     * numEdgeの各cellのrelatedEdgesにboxEdgeを入れる
+     */
     private void linkBoxEdgeToNumEdge() {
-        this.board.numEdge.forEach((i) -> {
-            i.getIterator(this).apply_around((j) -> {
-                return j.isBoxEdge() && i.relatedEdges.add(j.getCell());
-            });
-        });
+        this.board.numEdge.forEach((i) ->
+                i.getIterator(this).apply_around((j) ->
+                        j.isBoxEdge() && i.relatedEdges.add(j.getCell())));
     }
 
     /**

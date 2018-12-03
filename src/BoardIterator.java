@@ -59,6 +59,10 @@ public class BoardIterator {
         return getCell().isBoxEdge();
     }
 
+    public boolean isNumEdge() {
+        return getCell().isNumEdge();
+    }
+
     public boolean open() {
         board.open(x, y, player);
         return true;
@@ -108,10 +112,14 @@ public class BoardIterator {
      * @return count
      */
     public int count_around(Function<BoardIterator, Boolean> fn) {
+        return count_around_n(fn, 1);
+    }
+
+    public int count_around_n(Function<BoardIterator, Boolean> fn, int n) {
         int initial_x = x, initial_y = y;
         int result = 0;
-        for (int i = -1; i < 2; i++) {
-            for (int j = -1; j < 2; j++) {
+        for (int i = 0 - n; i < n + 1; i++) {
+            for (int j = 0 - n; j < n + 1; j++) {
                 x = initial_x + j;
                 y = initial_y + i;
                 if (i == 0 && j == 0) continue; // (x, y)は含めない

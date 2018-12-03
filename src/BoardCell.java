@@ -12,8 +12,8 @@ public class BoardCell implements Comparable<BoardCell> {
 
     private CellType cellType;
 
-    private int x;
-    private int y;
+    public int x;
+    public int y;
     private Board board;
     private int num;
     private double prob;

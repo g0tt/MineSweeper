@@ -4,8 +4,8 @@ public class BoardCell implements Comparable<BoardCell> {
     protected enum CellType {
         Fixed,
         Safe,
-        Edge,
-        EdgeOpen,
+        BoxEdge,
+        NumEdge,
         Open,
         NotOpen,
     }
@@ -18,11 +18,14 @@ public class BoardCell implements Comparable<BoardCell> {
     private int num;
     private double prob;
 
+    public BoardCellSet relatedEdges;
+
     public BoardCell(int x, int y, Board board, int num) {
         this.x = x;
         this.y = y;
         this.board = board;
         this.num = num;
+        this.relatedEdges = new BoardCellSet();
         switch(num) {
             case -1:
                 this.cellType = CellType.NotOpen;
@@ -57,15 +60,15 @@ public class BoardCell implements Comparable<BoardCell> {
         return true;
     }
 
-    public boolean _setEdge() {
+    public boolean _setBoxEdge() {
         if (isOpen()) return false;
-        cellType = CellType.Edge;
+        cellType = CellType.BoxEdge;
         return true;
     }
 
-    public boolean _setEdgeOpen() {
+    public boolean _setNumEdge() {
         if (!isOpen()) return false;
-        cellType = CellType.EdgeOpen;
+        cellType = CellType.NumEdge;
         return true;
     }
 
@@ -94,7 +97,7 @@ public class BoardCell implements Comparable<BoardCell> {
 
     @Override
     public String toString() {
-        return String.format("[ x: %d, y: %d ]", x, y) + " " + toChar();
+        return (!isBoxEdge() ? toChar() : "") + String.format(" [ x: %d, y: %d ]", x, y) + (isNumEdge() ? " rel: " + relatedEdges.toString() : "");
     }
 
     public char toChar() {
@@ -105,9 +108,9 @@ public class BoardCell implements Comparable<BoardCell> {
                 return 'o';
             case Open:
                 return ' ';
-            case Edge:
+            case BoxEdge:
                 return '/';
-            case EdgeOpen:
+            case NumEdge:
                 return String.valueOf(this.num).charAt(0);
             case NotOpen:
                 return '.';
@@ -129,8 +132,12 @@ public class BoardCell implements Comparable<BoardCell> {
     }
 
     public boolean isOpen() {
-        return (cellType == CellType.Open || cellType == CellType.EdgeOpen);
+        return (cellType == CellType.Open || cellType == CellType.NumEdge);
     }
+
+    public boolean isBoxEdge() { return cellType == CellType.BoxEdge; }
+
+    public boolean isNumEdge() { return cellType == CellType.NumEdge; }
 
     public boolean isNotOpenNorFixed() {
         return (cellType != CellType.Open && cellType != CellType.Fixed);

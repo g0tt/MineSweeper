@@ -55,21 +55,26 @@ public class BoardIterator {
         return getCell().isOpen();
     }
 
+    public boolean isBoxEdge() {
+        return getCell().isBoxEdge();
+    }
+
     public boolean open() {
         board.open(x, y, player);
         return true;
     }
 
-    public boolean setEdge() {
+    public boolean setBoxEdge() {
         if (isOpen()) return false;
-        this.getCell()._setEdge();
+        this.getCell()._setBoxEdge();
+        this.board._addBoxEdge(this.getCell());
         return true;
     }
 
-    public boolean setEdgeOpen() {
+    public boolean setNumEdge() {
         if (!isOpen()) return false;
-        this.getCell()._setEdgeOpen();
-        this.board._addEdgesOpen(this.getCell());
+        this.getCell()._setNumEdge();
+        this.board._addNumEdge(this.getCell());
         return true;
     }
 

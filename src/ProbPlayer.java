@@ -16,7 +16,7 @@ public class ProbPlayer extends Player {
     static final boolean TEST_MODE = false;
     static final int TEST_COUNT = 10;
     static final int LEVEL = 2;
-    static final int SEED = 6671;
+    static final int SEED = 3135;
 
     static public void main(String[] args) {
         Random rand = new Random(System.currentTimeMillis());
@@ -49,10 +49,10 @@ public class ProbPlayer extends Player {
             if (searchSafeCells() == 0) {
                 System.out.println("安全なマスがないよ");
                 if (searchEdges()) {
-                    System.out.println("EdgeOpen:");
-                    board.printEdges();
+                    linkBoxEdgeToNumEdge();
                 }
                 if (!TEST_MODE) {
+                    board.printEdges();
                     board.print();
                     break;
                 } else {
@@ -133,9 +133,17 @@ public class ProbPlayer extends Player {
             !(!here.isOpen()
                     && !here.isFixed()
                     && here.count_around(
-                            (i) -> i.isOpen() && i.setEdgeOpen()) != 0
-                    && here.setEdge())
+                            (i) -> i.isOpen() && i.setNumEdge()) != 0
+                    && here.setBoxEdge())
         , this);
+    }
+
+    private void linkBoxEdgeToNumEdge() {
+        this.board.numEdge.forEach((i) -> {
+            i.getIterator(this).apply_around((j) -> {
+                return j.isBoxEdge() && i.relatedEdges.add(j.getCell());
+            });
+        });
     }
 
     /**

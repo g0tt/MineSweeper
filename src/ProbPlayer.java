@@ -1,6 +1,8 @@
 import jp.ne.kuramae.torix.lecture.ms.core.MineSweeper;
 import jp.ne.kuramae.torix.lecture.ms.core.Player;
 
+import java.util.Random;
+
 /**
  * 確率計算
  */
@@ -8,13 +10,30 @@ public class ProbPlayer extends Player {
 
     private Board board;
 
+    public int rand_cnt;
+    public int random_seed;
+
+    static final boolean TEST_MODE = false;
+    static final int TEST_COUNT = 10;
+    static final int LEVEL = 1;
+
     static public void main(String[] args) {
-        Player player = new ProbPlayer();
+        Random rand = new Random(System.currentTimeMillis());
+        int clear_count = 0;
+        int test_count = TEST_MODE ? TEST_COUNT : 1;
+        for (int i = 0; i < test_count; i++) {
+            ProbPlayer player = new ProbPlayer();
 
-        MineSweeper mineSweeper = new MineSweeper(2);
-        mineSweeper.setRandomSeed(3135);
+            MineSweeper mineSweeper = new MineSweeper(LEVEL);
+            player.random_seed = rand.nextInt(1000);
+            mineSweeper.setRandomSeed(player.random_seed);
 
-        mineSweeper.start(player);
+            mineSweeper.start(player);
+            if (player.isClear()) {
+                clear_count++;
+            }
+        }
+        System.out.println("Clear: " + clear_count / (TEST_COUNT / 100.0) + "%");
     }
 
     @Override
@@ -29,18 +48,44 @@ public class ProbPlayer extends Player {
             if (searchSafeCells() == 0) {
                 System.out.println("安全なマスがないよ");
                 searchEdges();
-                board.print();
-                break;
+                if (!TEST_MODE) {
+                    board.print();
+                    break;
+                } else {
+                    fallback();
+                }
             }
 
             // 安全なマスを開ける
             board.forEach((iter) -> {
-                if (iter.isSafe()) iter.open();
-                return true;
+                if (iter.isSafe()) return iter.open();
+                return false;
             }, this);
         }
+        if (!TEST_MODE) System.exit(0);
+    }
 
-        System.exit(0);
+    private void fallback() {
+        int count = board.count((i) -> {
+            if (!(i.isOpen() || i.isFixed())) {
+                return true;
+            };
+            return false;
+        }, this);
+        Random rand = new Random();
+        rand_cnt = rand.nextInt(count);
+        if (board.forEach((i) -> {
+            if (!(i.isOpen() || i.isFixed())) {
+                i.player.rand_cnt--;
+                if (i.player.rand_cnt == 0) return i.open();
+            }
+            return true;
+        }, this)) {
+            System.out.println("ランダムに選択しました");
+        } else {
+            System.exit(0);
+        }
+
     }
 
     /**

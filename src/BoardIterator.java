@@ -1,22 +1,19 @@
-import com.sun.org.apache.xpath.internal.operations.Bool;
-import jp.ne.kuramae.torix.lecture.ms.core.Player;
-
 import java.util.function.Function;
 
 public class BoardIterator {
     protected int x;
     protected int y;
     protected Board board;
-    protected Player player;
+    protected ProbPlayer player;
 
-    public BoardIterator(Board board, Player player) {
+    public BoardIterator(Board board, ProbPlayer player) {
         this.x = 0;
         this.y = 0;
         this.board = board;
         this.player = player;
     }
 
-    public BoardIterator(int x, int y, Board board, Player player) {
+    public BoardIterator(int x, int y, Board board, ProbPlayer player) {
         this.x = x;
         this.y = y;
         this.board = board;

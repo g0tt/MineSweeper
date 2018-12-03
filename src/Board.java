@@ -1,5 +1,3 @@
-import jp.ne.kuramae.torix.lecture.ms.core.Player;
-
 import java.util.function.Function;
 
 public class Board {
@@ -23,13 +21,13 @@ public class Board {
         }
     }
 
-    public void open(int x, int y, Player player) {
+    public void open(int x, int y,ProbPlayer player) {
         player.open(x, y);
         this.forEach((i) -> {
             i.getCell().set(i.player.getCell(i.x, i.y));
             return true;
         }, player);
-        print();
+        if (!ProbPlayer.TEST_MODE) print();
     }
 
     public BoardCell get(int x, int y) {
@@ -64,7 +62,7 @@ public class Board {
      * @param fn ラムダ式
      * @return count
      */
-    public int count(Function<BoardIterator, Boolean> fn, Player player) {
+    public int count(Function<BoardIterator, Boolean> fn, ProbPlayer player) {
         int cnt = 0;
         BoardIterator iter = new BoardIterator(this, player);
 
@@ -88,7 +86,7 @@ public class Board {
      * @param fn ラムダ式
      * @return 返り値の論理積
      */
-    public boolean forEach(Function<BoardIterator, Boolean> fn, Player player) {
+    public boolean forEach(Function<BoardIterator, Boolean> fn, ProbPlayer player) {
         BoardIterator iter = new BoardIterator(this, player);
         boolean success = true;
 

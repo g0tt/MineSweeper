@@ -60,6 +60,19 @@ public class BoardIterator {
         return true;
     }
 
+    public boolean setEdge() {
+        if (isOpen()) return false;
+        this.getCell()._setEdge();
+        return true;
+    }
+
+    public boolean setEdgeOpen() {
+        if (!isOpen()) return false;
+        this.getCell()._setEdgeOpen();
+        this.board._addEdgesOpen(this.getCell());
+        return true;
+    }
+
     /**
      * 周囲8マスにラムダ式を適用する
      * @param fn ラムダ式

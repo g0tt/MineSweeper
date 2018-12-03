@@ -15,7 +15,8 @@ public class ProbPlayer extends Player {
 
     static final boolean TEST_MODE = false;
     static final int TEST_COUNT = 10;
-    static final int LEVEL = 1;
+    static final int LEVEL = 2;
+    static final int SEED = 6671;
 
     static public void main(String[] args) {
         Random rand = new Random(System.currentTimeMillis());
@@ -25,7 +26,7 @@ public class ProbPlayer extends Player {
             ProbPlayer player = new ProbPlayer();
 
             MineSweeper mineSweeper = new MineSweeper(LEVEL);
-            player.random_seed = rand.nextInt(1000);
+            player.random_seed = SEED == -1 ? rand.nextInt(1000) : SEED;
             mineSweeper.setRandomSeed(player.random_seed);
 
             mineSweeper.start(player);
@@ -47,7 +48,10 @@ public class ProbPlayer extends Player {
             searchFixedCells();
             if (searchSafeCells() == 0) {
                 System.out.println("安全なマスがないよ");
-                searchEdges();
+                if (searchEdges()) {
+                    System.out.println("EdgeOpen:");
+                    board.printEdges();
+                }
                 if (!TEST_MODE) {
                     board.print();
                     break;
@@ -122,16 +126,16 @@ public class ProbPlayer extends Player {
 
     /**
      * エッジの探索
-     * @return
+     * @return エッジが存在するか
      */
-    private void searchEdges() {
-        board.forEach((here) -> {
-            if (!here.isOpen() && !here.isFixed() && here.count_around((i) -> i.isOpen()) != 0) {
-                return here.getCell().setEdge();
-            } else {
-                return false;
-            }
-        }, this);
+    private boolean searchEdges() {
+        return !board.forEach((here) ->
+            !(!here.isOpen()
+                    && !here.isFixed()
+                    && here.count_around(
+                            (i) -> i.isOpen() && i.setEdgeOpen()) != 0
+                    && here.setEdge())
+        , this);
     }
 
     /**

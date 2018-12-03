@@ -6,17 +6,19 @@ public class Board {
     private int height;
 
     private BoardCell[][] board;
+    private BoardCellSet edgesOpen;
 
     public Board(int width, int height) {
         this.width = width;
         this.height = height;
         this.board = new BoardCell[width][height];
+        this.edgesOpen = new BoardCellSet();
     }
 
     public void initialize() {
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                this.board[x][y] = new BoardCell(-1);
+                this.board[x][y] = new BoardCell(x, y, this, -1);
             }
         }
     }
@@ -48,12 +50,22 @@ public class Board {
             if (y != 0) res += "\n";
             for (int x = 0; x < width; x++) {
                 if (x != 0) res += " ";
-                res += get(x, y).toString();
+                res += get(x, y).toChar();
             }
         }
         res += "\n";
 
         System.out.println(res);
+    }
+
+    public void _addEdgesOpen(BoardCell cell) {
+        this.edgesOpen.add(cell);
+    }
+
+    public void printEdges() {
+        edgesOpen.forEach((i) -> {
+            System.out.println(i.toString());
+        });
     }
 
 

@@ -1,5 +1,7 @@
+import javafx.util.Pair;
 import jp.ne.kuramae.torix.lecture.ms.core.MineSweeper;
 import jp.ne.kuramae.torix.lecture.ms.core.Player;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Random;
 
@@ -13,10 +15,19 @@ public class ProbPlayer extends Player {
     public int rand_cnt;
     public int random_seed;
 
+    /**
+     * 設定
+     */
     static final boolean TEST_MODE = false;
     static final int TEST_COUNT = 10;
     static final int LEVEL = 2;
     static final int SEED = 3135;
+
+    /**
+     * bfs用のキュー
+     * edgeBitMap, numEdgeFlg, x, y
+     */
+    private ArrayDeque<Pair<Pair<Long, Long>, Pair<Integer, Integer>>> bfs_queue;
 
     static public void main(String[] args) {
         Random rand = new Random(System.currentTimeMillis());
@@ -50,7 +61,11 @@ public class ProbPlayer extends Player {
                 System.out.println("安全なマスがないよ");
                 if (searchEdges()) {
                     linkBoxEdgeToNumEdge();
+                    bfs_queue = new ArrayDeque<>();
                     queueNumEdge();
+                    for (int j = 0; bfs_queue.size() > 0; j++) {
+                        bfs();
+                    }
                 }
                 if (!TEST_MODE) {
                     //board.printEdges();
@@ -83,13 +98,12 @@ public class ProbPlayer extends Player {
             for (int localBitMap : localBitList) {
                 long edgeBitMap = createEdgeBitMap(cell, localBitMap);
                 long numEdgeFlg = (long)Math.pow(2, board.numEdge.headSet(cell).size());
-                System.out.println("edgeBitMap = " + edgeBitMap);
                 for (int i = -1; i < 2; i++) {
-                    for (int j = -1; j < 2; j++) {
+                    for (int j = -1; j < 2; j++) { // TODO: 隣接するnumEdgeを考えているが，実際はrelatedEdgesをピボットにして調べないと不十分
                         int x = cell.x + j, y = cell.y + i;
                         iter.setXY(x, y);
                         if (iter.isNumEdge()) {
-                            //queue.push(edgeBitMap, numEdgeFlg, x, y)
+                            bfs_queue.add(new Pair<>(new Pair<>(edgeBitMap, numEdgeFlg), new Pair<>(x, y)));
                         }
                     }
                 }
@@ -97,9 +111,12 @@ public class ProbPlayer extends Player {
         }
     }
 
-    /*
+    /**
+     * boxEdgeの爆弾配置に関する幅優先探索
+     */
     private void bfs() {
-        queue.pop();
+        System.out.println(bfs_queue.poll());
+        /*
         BoardIterator iter = cell.getIterator(this);
         int fixed_bombs = iter.count_around((i) -> i.isFixed());
         int other_bombs = cell.get() - fixed_bombs;
@@ -119,8 +136,8 @@ public class ProbPlayer extends Player {
                 }
             }
         }
+        */
     }
-    */
 
     /**
      * localBitMapからedgeBitMapを作成する

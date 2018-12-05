@@ -127,24 +127,4 @@ public class Board {
         }
         return success;
     }
-
-    /**
-     * 全マスにラムダ式を適用し，TreeSetを返す
-     * @param fn ラムダ式
-     * @return TreeSet<EdgeCell>
-     */
-    /*
-    public EdgeCellSet map(Function<BoardIterator, EdgeCell> fn, Player player) {
-        BoardIterator iter = new BoardIterator(this, player);
-        EdgeCellSet result = new EdgeCellSet();
-
-        for (int y = 0; y < player.getHeight(); y++) {
-            for (int x = 0; x < player.getWidth(); x++) {
-                iter.setXY(x, y);
-                result.add(fn.apply(iter));
-            }
-        }
-        return result;
-    }
-    */
 }

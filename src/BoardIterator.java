@@ -32,11 +32,11 @@ public class BoardIterator {
         return y;
     }
 
-    public boolean setXY(int x, int y) {
-        if (x < 0 || x >= board.getWidth() || y < 0 || y >= board.getHeight()) return false; // 範囲外
+    public BoardIterator setXY(int x, int y) {
+        if (x < 0 || x >= board.getWidth() || y < 0 || y >= board.getHeight()) return null; // 範囲外
         this.x = x;
         this.y = y;
-        return true;
+        return this;
     }
 
     public BoardCell getCell() {

@@ -26,9 +26,9 @@ public class Board {
     }
 
     public void open(int x, int y,ProbPlayer player) {
-        player.open(x, y);
+        player._open(x, y);
         this.forEach((i) -> {
-            i.getCell().set(i.player.getCell(i.x, i.y));
+            i.getCell().set(i.player._getCell(i.x, i.y));
             return true;
         }, player);
         if (!ProbPlayer.TEST_MODE) print();
@@ -91,7 +91,7 @@ public class Board {
 
         for (int y = 0; y < getHeight(); y++) {
             for (int x = 0; x < getWidth(); x++) {
-                if (!iter.setXY(x, y)) return -1;
+                if (iter.setXY(x, y) == null) return -1;
                 try {
                     if (fn.apply(iter)) {
                         cnt++;

@@ -26,6 +26,7 @@ public class Board {
     }
 
     public void open(int x, int y,ProbPlayer player) {
+        if (!player.TEST_MODE) System.out.println("x = " + x + ", y = " + y);
         player._open(x, y);
         this.forEach((i) -> {
             i.getCell().set(i.player._getCell(i.x, i.y));

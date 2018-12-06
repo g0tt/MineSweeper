@@ -56,7 +56,7 @@ public class TestPlayer extends ProbPlayer {
 
         for (int i = 0; i < 50; i++) {
             searchFixedCells();
-            if (searchSafeCells() == 0) {
+            if (!searchSafeCells()) {
                 System.out.println("安全なマスがないよ");
                 if (searchEdges()) {
                     if (board.boxEdge.size() > 62 || board.numEdge.size() > 62) {

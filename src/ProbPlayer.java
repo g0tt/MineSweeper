@@ -19,11 +19,11 @@ public class ProbPlayer extends Player {
     /**
      * 設定
      */
-    static final boolean TEST_MODE = false;
-    static final int TEST_COUNT = 10;
+    static final boolean TEST_MODE = true;
+    static final int TEST_COUNT = 500;
     static final int LEVEL = 2;
-    static final int SEED = 3135;
-    static final int BFS_DEPTH = 4;
+    static final int SEED = -1;
+    static final int BFS_DEPTH = 6;
 
     /**
      * bfs用のキュー
@@ -47,6 +47,7 @@ public class ProbPlayer extends Player {
 
             MineSweeper mineSweeper = new MineSweeper(LEVEL);
             player.random_seed = SEED == -1 ? rand.nextInt(1000) : SEED;
+            System.out.println("player.random_seed = " + player.random_seed);
             mineSweeper.setRandomSeed(player.random_seed);
 
             mineSweeper.start(player);
@@ -54,7 +55,7 @@ public class ProbPlayer extends Player {
                 clear_count++;
             }
         }
-        System.out.println("Clear: " + clear_count / (TEST_COUNT / 100.0) + "%");
+        if (TEST_MODE) System.out.println("Clear: " + clear_count / (TEST_COUNT / 100.0) + "%");
     }
 
     /**
@@ -82,15 +83,16 @@ public class ProbPlayer extends Player {
         board = new Board(getWidth(), getHeight());
         board.initialize();
 
-        board.open(getWidth() / 2, getHeight() / 2, this);
+        board.open(0, 0, this);
 
-        for (int i = 0; i < 50; i++) {
+        for (int i = 0; i < 100; i++) {
             searchFixedCells();
             if (searchSafeCells() == 0) {
                 searchSafeCellsComplex();
                 if (!TEST_MODE) {
                     board.print();
-                    break;
+                    //fallback();
+                    //break;
                 } else {
                     fallback();
                 }
@@ -127,8 +129,9 @@ public class ProbPlayer extends Player {
     /**
      * boxEdgeの爆弾配置に関する幅優先探索
      */
-    protected void bfs() {
+    protected boolean bfs() {
         Long[] data = bfs_queue.poll();
+        if (data == null) return false;
         long edgeBitMap = data[0];
         long numEdgeFlg = data[1];
         long boxEdgeFlg = data[2];
@@ -137,7 +140,7 @@ public class ProbPlayer extends Player {
         int depth = (int)(long)data[5];
         if (depth > bfs_depth) {
             bfs_depth = depth;
-            if (depth == BFS_DEPTH) return;
+            if (depth == BFS_DEPTH) return false;
             edge_bitmap = new ArrayList<>();
         }
 
@@ -156,6 +159,7 @@ public class ProbPlayer extends Player {
             edge_bitmap.add(new Pair<>(nextEdgeBitMap, nextBoxEdgeFlg));
             pushBfsQueue(cell.x, cell.y, nextEdgeBitMap, nextNumEdgeFlg, nextBoxEdgeFlg, depth);
         }
+        return true;
     }
 
     /**
@@ -252,14 +256,10 @@ public class ProbPlayer extends Player {
         // 未確定のマスなら二通り試す
         if ((mask & 1 << i) == 0) {
             dfs(relatedEdges, binary_pattern + (int)Math.pow(2, i), i + 1, bombs - 1, patterns, mask);
-            dfs(relatedEdges, binary_pattern, i + 1, bombs, patterns);
+            dfs(relatedEdges, binary_pattern, i + 1, bombs, patterns, mask);
         }
-        // 爆弾が入ると確定している
-        if ((mask & 1 << i) != 0 && (binary_pattern & 1 << i) != 0) {
-            dfs(relatedEdges, binary_pattern + (int)Math.pow(2, i), i + 1, bombs - 1, patterns, mask);
-        }
-        // 爆弾が入らないと確定している
-        if ((mask & 1 << i) != 0 && (binary_pattern & 1 << i) == 0) {
+        // 爆弾が入るか入らないか確定している
+        if ((mask & 1 << i) != 0) {
             dfs(relatedEdges, binary_pattern, i + 1, bombs, patterns, mask);
         }
     }
@@ -268,6 +268,23 @@ public class ProbPlayer extends Player {
      * これ以上開けない場合
      */
     protected void fallback() {
+        BoardIterator iter = new BoardIterator(board, this);
+        if (!iter.setXY(0, 0).isOpen()) {
+            iter.open();
+            return;
+        }
+        if (!iter.setXY(getWidth() - 1, 0).isOpen()) {
+            iter.open();
+            return;
+        }
+        if (!iter.setXY(0, getHeight() - 1).isOpen()) {
+            iter.open();
+            return;
+        }
+        if (!iter.setXY(getWidth() - 1, getHeight() - 1).isOpen()) {
+            iter.open();
+            return;
+        }
         int count = board.count((i) -> {
             if (!(i.isOpen() || i.isFixed())) {
                 return true;
@@ -324,6 +341,8 @@ public class ProbPlayer extends Player {
      * @return エッジが存在するか
      */
     protected boolean searchEdges() {
+        board.boxEdge = new BoardCellSet();
+        board.numEdge = new BoardCellSet();
         return !board.forEach((here) ->
             !(!here.isOpen()
                     && !here.isFixed()
@@ -337,9 +356,11 @@ public class ProbPlayer extends Player {
      * numEdgeの各cellのrelatedEdgesにboxEdgeを入れる
      */
     protected void linkBoxEdgeToNumEdge() {
-        this.board.numEdge.forEach((i) ->
+        this.board.numEdge.forEach((i) -> {
+                i.relatedEdges = new BoardCellSet();
                 i.getIterator(this).apply_around((j) ->
-                        j.isBoxEdge() && i.relatedEdges.add(j.getCell())));
+                        j.isBoxEdge() && i.relatedEdges.add(j.getCell()));
+        });
     }
 
     /**
@@ -370,13 +391,16 @@ public class ProbPlayer extends Player {
         if (searchEdges()) {
             if (board.boxEdge.size() > 63 || board.numEdge.size() > 63) {
                 System.out.println("size is over 63, may cause error");
-                System.exit(0);
+                return; // FIXME
+                //System.exit(0);
             }
             linkBoxEdgeToNumEdge();
             bfs_queue = new ArrayDeque<>();
             queueNumEdge();
+            bfs_depth = 0;
+            edge_bitmap = new ArrayList<>();
             while (bfs_depth < BFS_DEPTH) {
-                bfs();
+                if (!bfs()) break;
             }
 
             // FIXME
@@ -391,15 +415,21 @@ public class ProbPlayer extends Player {
             long final_res = 0;
             for (Long key : result.keySet()) {
                 final_res |= (key ^ result.get(key));
-                System.out.println(String.format("%64s", Long.toBinaryString(key)).replace(" ", "0")
-                        + " => "
-                        + String.format("%64s", Long.toBinaryString(result.get(key))).replace(" ", "0"));
             }
 
-            System.out.println("result = " + String.format("%64s", Long.toBinaryString(final_res)).replace(" ", "0"));
-            int k = 1;
+            System.out.println("final_res = " + String.format("%64s", Long.toBinaryString(final_res)).replace(" ", "0"));
+            if (final_res == 0) {
+                for (Pair<Long, Long> data : edge_bitmap) {
+                    /*
+                    System.out.println(String.format("%64s", Long.toBinaryString(data.getValue())).replace(" ", "0")
+                        + " => "
+                        + String.format("%64s", Long.toBinaryString(data.getKey())).replace(" ", "0"));
+                        */
+                }
+            }
+            long k = 1;
             for (BoardCell cell : board.boxEdge) {
-                if ((final_res & (long)k) != 0) {
+                if ((final_res & k) != 0) {
                     cell.setSafe();
                 }
                 k *= 2;

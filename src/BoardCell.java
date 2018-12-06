@@ -43,7 +43,7 @@ public class BoardCell implements Comparable<BoardCell> {
     public void set(int num) {
         if (num == -1) return;
         this.num = num;
-        if (!this.isOpen()) this.cellType = CellType.Open;
+        this.cellType = CellType.Open;
     }
 
     public boolean fix() {
@@ -140,7 +140,7 @@ public class BoardCell implements Comparable<BoardCell> {
     public boolean isNumEdge() { return cellType == CellType.NumEdge; }
 
     public boolean isNotOpenNorFixed() {
-        return (cellType != CellType.Open && cellType != CellType.Fixed);
+        return (cellType != CellType.Open && cellType != CellType.Fixed && cellType != CellType.NumEdge);
     }
 
 }

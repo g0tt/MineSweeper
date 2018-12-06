@@ -118,7 +118,7 @@ public class TestPlayer extends ProbPlayer {
         if (!TEST_MODE) System.exit(0);
     }
 
-    protected void bfs() {
+    protected boolean bfs() {
         Long[] data = bfs_queue.poll();
         //System.out.println(data[0] + ", " + data[1] + ", " + data[2] + ", " + data[3] + ", " + data[4]);
         long edgeBitMap = data[0];
@@ -132,7 +132,7 @@ public class TestPlayer extends ProbPlayer {
         int depth = (int)(long)data[5];
         if (depth > bfs_depth) {
             bfs_depth = depth;
-            if (depth == 2) return;
+            if (depth == 2) return false;
             edge_bitmap = new ArrayList<>();
         }
 
@@ -159,6 +159,7 @@ public class TestPlayer extends ProbPlayer {
             edge_bitmap.add(new Pair<>(nextEdgeBitMap, nextBoxEdgeFlg));
             pushBfsQueue(cell.x, cell.y, nextEdgeBitMap, nextNumEdgeFlg, nextBoxEdgeFlg, depth);
         }
+        return true;
     }
 
 }

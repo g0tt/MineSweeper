@@ -23,24 +23,24 @@ public class ProbPlayer extends Player {
     /**
      * 設定
      */
-    static final boolean TEST_MODE = true; // 正解率をテストするモード
-    static final int TEST_COUNT = 100; // 正解率テストの試行回数
-    static final int LEVEL = 0; // レベル 0 or 1 or 2
+    static final boolean TEST_MODE = false; // 正解率をテストするモード
+    static final int TEST_COUNT = 5000; // 正解率テストの試行回数
+    static final int LEVEL = 2; // レベル 0 or 1 or 2
     static final int SEED = -1; // 問題の乱数シード -1でランダム
     static final int BFS_DEPTH = 4; // 幅優先探索の深さ 4で充分
 
     /**
      * bfs用のキュー
-     * edgeBitMap, numEdgeFlg, boxEdgeFlg, x, y
+     * edgeBitMap, numEdgeFlg, boxEdgeFlg, x, y, depth
      */
-    protected ArrayDeque<Long[]> bfs_queue;
+    protected ArrayDeque<Pair<BitMap[], Integer[]>> bfs_queue;
 
     /**
      * bfsキュー内で一番浅いものの深さ
      */
     protected int bfs_depth;
 
-    protected ArrayList<Pair<Long, Long>> edge_bitmap;
+    protected ArrayList<Pair<BitMap, BitMap>> edge_bitmap;
 
     static public void main(String[] args) {
         Random rand = new Random(System.currentTimeMillis());
@@ -184,43 +184,39 @@ public class ProbPlayer extends Player {
      */
     protected boolean searchSafeCellsComplex() {
         if (searchEdges()) {
-            if (board.boxEdge.size() > 63 || board.numEdge.size() > 63) {
-                System.out.println("size is over 63, may cause error");
-                return false; // FIXME
-                //System.exit(0);
-            }
+            int max_size = Math.max(board.boxEdge.size(), board.numEdge.size());
             linkBoxEdgeToNumEdge();
             bfs_queue = new ArrayDeque<>();
-            queueNumEdge();
+            queueNumEdge(max_size);
             bfs_depth = 0;
             edge_bitmap = new ArrayList<>();
             while (bfs_depth < BFS_DEPTH) {
-                if (!bfs()) break;
+                if (!bfs(max_size)) break;
             }
 
             // FIXME
-            HashMap<Long, Long> result = new HashMap<>();
-            for (Pair<Long, Long> data : edge_bitmap) {
+            HashMap<BitMap, BitMap> result = new HashMap<>();
+            for (Pair<BitMap, BitMap> data : edge_bitmap) {
                 if (result.containsKey(data.getValue())) {
-                    result.put(data.getValue(), (result.get(data.getValue()) | data.getKey()));
+                    result.put(data.getValue(), BitMap.or(result.get(data.getValue()), data.getKey()));
                 } else {
                     result.put(data.getValue(), data.getKey());
                 }
             }
-            long final_res = 0;
-            for (Long key : result.keySet()) {
-                final_res |= (key ^ result.get(key));
+            BitMap final_res = new BitMap(max_size);
+            for (BitMap key : result.keySet()) {
+                final_res.or(BitMap.xor(key, result.get(key)));
             }
 
-            if (final_res == 0) {
+            if (final_res.isZero()) {
                 return false;
             }
-            long k = 1;
+            int k = 0;
             for (BoardCell cell : board.boxEdge) {
-                if ((final_res & k) != 0) {
+                if (final_res.get(k)) {
                     cell.setSafe();
                 }
-                k *= 2;
+                k++;
             }
             return true;
         }
@@ -230,7 +226,7 @@ public class ProbPlayer extends Player {
     /**
      * 全てのnumEdgeをbfs用のFIFOバッファに入れる
      */
-    protected void queueNumEdge() {
+    protected void queueNumEdge(int max_size) {
         for (BoardCell cell : board.numEdge) {
             BoardIterator iter = cell.getIterator(this);
             int fixed_bombs = iter.count_around((i) -> i.isFixed());
@@ -238,9 +234,9 @@ public class ProbPlayer extends Player {
             ArrayList<Integer> localBitList = new ArrayList<>();
             dfs(cell.relatedEdges, 0, 0, other_bombs, localBitList);
             for (int localBitMap : localBitList) {
-                long edgeBitMap = createEdgeBitMap(cell, localBitMap);
-                long numEdgeFlg = (long)Math.pow(2, board.numEdge.headSet(cell).size());
-                long boxEdgeFlg = getBoxEdgeFlg(cell);
+                BitMap edgeBitMap = createEdgeBitMap(cell, localBitMap, max_size);
+                BitMap numEdgeFlg = new BitMap(max_size).setTrue(board.numEdge.headSet(cell).size());
+                BitMap boxEdgeFlg = getBoxEdgeFlg(cell, max_size);
                 pushBfsQueue(cell.x, cell.y, edgeBitMap, numEdgeFlg, boxEdgeFlg, 0);
             }
         }
@@ -249,15 +245,15 @@ public class ProbPlayer extends Player {
     /**
      * boxEdgeの爆弾配置に関する幅優先探索
      */
-    protected boolean bfs() {
-        Long[] data = bfs_queue.poll();
+    protected boolean bfs(int max_size) {
+        Pair<BitMap[], Integer[]> data = bfs_queue.poll();
         if (data == null) return false;
-        long edgeBitMap = data[0];
-        long numEdgeFlg = data[1];
-        long boxEdgeFlg = data[2];
-        int x = (int)(long)data[3];
-        int y = (int)(long)data[4];
-        int depth = (int)(long)data[5];
+        BitMap edgeBitMap = data.getKey()[0];
+        BitMap numEdgeFlg = data.getKey()[1];
+        BitMap boxEdgeFlg = data.getKey()[2];
+        int x = data.getValue()[0];
+        int y = data.getValue()[1];
+        int depth = data.getValue()[2];
         if (depth > bfs_depth) {
             bfs_depth = depth;
             if (depth == BFS_DEPTH) return false;
@@ -273,9 +269,9 @@ public class ProbPlayer extends Player {
         ArrayList<Integer> localBitList = new ArrayList<>();
         dfs(cell.relatedEdges, localBitMap, 0, other_bombs, localBitList, createLocalBitMap(cell, boxEdgeFlg));
         for (int nextLocalBitMap : localBitList) {
-            long nextEdgeBitMap = createEdgeBitMap(cell, nextLocalBitMap) | edgeBitMap;
-            long nextNumEdgeFlg = (long)Math.pow(2, board.numEdge.headSet(cell).size()) | numEdgeFlg;
-            long nextBoxEdgeFlg = getBoxEdgeFlg(cell) | boxEdgeFlg;
+            BitMap nextEdgeBitMap = createEdgeBitMap(cell, nextLocalBitMap, max_size).or(edgeBitMap);
+            BitMap nextNumEdgeFlg = numEdgeFlg.copy().setTrue(board.numEdge.headSet(cell).size());
+            BitMap nextBoxEdgeFlg = getBoxEdgeFlg(cell, max_size).or(boxEdgeFlg);
             edge_bitmap.add(new Pair<>(nextEdgeBitMap, nextBoxEdgeFlg));
             pushBfsQueue(cell.x, cell.y, nextEdgeBitMap, nextNumEdgeFlg, nextBoxEdgeFlg, depth);
         }
@@ -290,7 +286,7 @@ public class ProbPlayer extends Player {
      * @param nextBoxEdgeFlg 最新のboxEdgeFlg
      * @param depth 現在の深さ
      */
-    protected void pushBfsQueue(int x, int y, long nextEdgeBitMap, long nextNumEdgeFlg, long nextBoxEdgeFlg, int depth) {
+    protected void pushBfsQueue(int x, int y, BitMap nextEdgeBitMap, BitMap nextNumEdgeFlg, BitMap nextBoxEdgeFlg, int depth) {
         BoardIterator iter = new BoardIterator(board, this);
         for (int i = -1; i < 2; i++) {
             for (int j = -1; j < 2; j++) { // TODO: 隣接するnumEdgeを考えているが，実際はrelatedEdgesをピボットにして調べないと不十分
@@ -298,8 +294,9 @@ public class ProbPlayer extends Player {
                 int nextX = x + j, nextY = y + i;
                 if (iter.setXY(nextX, nextY) == null) continue;
                 if (iter.isNumEdge()) {
-                    Long[] arr = {nextEdgeBitMap, nextNumEdgeFlg, nextBoxEdgeFlg, (long)nextX, (long)nextY, (long)depth + 1};
-                    bfs_queue.add(arr);
+                    BitMap[] arr1 = {nextEdgeBitMap, nextNumEdgeFlg, nextBoxEdgeFlg};
+                    Integer[] arr2 = {nextX, nextY, depth + 1};
+                    bfs_queue.add(new Pair<>(arr1, arr2));
                 }
             }
         }
@@ -311,12 +308,12 @@ public class ProbPlayer extends Player {
      * @param localBitMap localBitMap
      * @return edgeBitMap
      */
-    protected long createEdgeBitMap(BoardCell cell, int localBitMap) {
-        long edgeBitMap = 0;
+    protected BitMap createEdgeBitMap(BoardCell cell, int localBitMap, int max_size) {
+        BitMap edgeBitMap = new BitMap(max_size);
         int filter = 1;
         for (BoardCell boxCell : cell.relatedEdges) {
             if ((filter & localBitMap) > 0) {
-                edgeBitMap += Math.pow(2, board.boxEdge.headSet(boxCell).size());
+                edgeBitMap.setTrue(board.boxEdge.headSet(boxCell).size());
             }
             filter *= 2;
         }
@@ -329,11 +326,11 @@ public class ProbPlayer extends Player {
      * @param edgeBitMap edgeBitMap
      * @return localBitMap
      */
-    protected int createLocalBitMap(BoardCell cell, long edgeBitMap) {
+    protected int createLocalBitMap(BoardCell cell, BitMap edgeBitMap) {
         int localBitMap = 0;
         int i = 0;
         for (BoardCell boxCell : cell.relatedEdges) {
-            if (((long)Math.pow(2, board.boxEdge.headSet(boxCell).size()) & edgeBitMap) > 0) {
+            if (edgeBitMap.get(board.boxEdge.headSet(boxCell).size())) {
                 localBitMap += 1 << i;
             }
             i += 1;
@@ -346,10 +343,10 @@ public class ProbPlayer extends Player {
      * @param cell in numEdge
      * @return boxEdgeFlg
      */
-    protected long getBoxEdgeFlg(BoardCell cell) {
-        long boxEdgeFlg = 0;
+    protected BitMap getBoxEdgeFlg(BoardCell cell, int max_size) {
+        BitMap boxEdgeFlg = new BitMap(max_size);
         for (BoardCell boxCell : cell.relatedEdges) {
-            boxEdgeFlg += Math.pow(2, board.boxEdge.headSet(boxCell).size());
+            boxEdgeFlg.setTrue(board.boxEdge.headSet(boxCell).size());
         }
         return boxEdgeFlg;
     }

@@ -5,7 +5,7 @@ import java.util.Objects;
  * 64bit整数までしか扱えないので，64 * n[bit]に拡張する
  */
 public class BitMap {
-    private boolean[] bits;
+    protected boolean[] bits;
 
     public BitMap(int n, boolean[] bits) {
         this.bits = new boolean[n];
@@ -104,10 +104,7 @@ public class BitMap {
     }
 
     public void print() {
-        for (int i = 0; i < length(); i++) {
-            System.out.print(bits[i] ? "1" : "0");
-        }
-        System.out.print("\n");
+        System.out.println(toString());
     }
 
     @Override

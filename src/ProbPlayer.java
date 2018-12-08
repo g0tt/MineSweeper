@@ -5,10 +5,7 @@ import jp.ne.kuramae.torix.lecture.ms.core.Player;
 
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Random;
+import java.util.*;
 
 /**
  * 確率計算
@@ -28,8 +25,13 @@ public class ProbPlayer extends Player {
     static final int LEVEL = 2; // レベル 0 or 1 or 2
     static final int SEED = -1;//950795; // 問題の乱数シード -1でランダム
     static final int BFS_DEPTH = 4; // 幅優先探索の深さ 4で充分
+    static final double BIAS = 0.014;
 
     private double bias;
+
+    private int mode;
+
+    private int[] statistics;
 
     /**
      * bfs用のキュー
@@ -45,6 +47,7 @@ public class ProbPlayer extends Player {
     protected ArrayList<Pair<BitMap, BitMap>> edge_bitmap;
 
     static public void main(String[] args) {
+        int[] statistics = new int[6];
         PrintStream stdout = System.out;
         if (TEST_MODE) {
             OutputStream nul = new OutputStream() {
@@ -62,37 +65,34 @@ public class ProbPlayer extends Player {
             };
             System.setOut(new PrintStream(nul));
         }
-        for (double bias = 0.01; bias < 0.02; bias += 0.0005) {
-            int[] numEdgeCount = new int[120];
-            int[] bombNumCount = new int[120];
 
-            Random rand = new Random(System.currentTimeMillis());
-            int clear_count = 0;
-            int test_count = TEST_MODE ? TEST_COUNT : 1;
-            for (int i = 0; i < test_count; i++) {
-                ProbPlayer player = new ProbPlayer();
-                player.bias = bias;
+        Random rand = new Random(System.currentTimeMillis());
+        int clear_count = 0;
+        int test_count = TEST_MODE ? TEST_COUNT : 1;
+        for (int i = 0; i < test_count; i++) {
+            ProbPlayer player = new ProbPlayer();
+            player.bias = BIAS;
+            player.statistics = statistics;
 
-                MineSweeper mineSweeper = new MineSweeper(LEVEL);
-                player.random_seed = SEED == -1 ? rand.nextInt() : SEED;
-                if (!TEST_MODE) System.out.println("Random seed: " + player.random_seed);
-                mineSweeper.setRandomSeed(player.random_seed);
+            MineSweeper mineSweeper = new MineSweeper(LEVEL);
+            player.random_seed = SEED == -1 ? rand.nextInt() : SEED;
+            if (!TEST_MODE) System.out.println("Random seed: " + player.random_seed);
+            mineSweeper.setRandomSeed(player.random_seed);
 
-                mineSweeper.start(player);
-                if (player.isClear()) {
-                    clear_count++;
-                }
-                if (player.isGameOver()) {
-                    numEdgeCount[player.board.boxEdge.size()]++;
-                    bombNumCount[player.countNotFixedBombs()]++;
-
-                }
-                if (TEST_MODE)
-                    player.showProgressBar(i + 1, test_count, String.format("%.1f", clear_count * 100.0 / i) + "%", stdout);
+            mineSweeper.start(player);
+            if (player.isClear()) {
+                clear_count++;
+            }
+            if (player.isGameOver()) {
+                player.statistics[player.mode]++;
             }
             if (TEST_MODE) {
-                stdout.println("\n\nClear: " + clear_count / (TEST_COUNT / 100.0) + "%; Bias: " + String.format("%.4f", bias));
+                player.showProgressBar(i + 1, test_count, String.format("%.1f", clear_count * 100.0 / i) + "%", stdout);
             }
+        }
+        if (TEST_MODE) {
+            stdout.println("\n\nClear: " + clear_count / (TEST_COUNT / 100.0) + "%");
+            stdout.println(Arrays.toString(statistics));
         }
     }
 
@@ -125,6 +125,7 @@ public class ProbPlayer extends Player {
 
         for (int i = 0; i < 1000; i++) {
             if (i > 200) System.exit(0);
+            this.mode = 0;
             searchFixedCells();
             if (!searchSafeCells() && !searchSafeCellsComplex()) {
                 if (!TEST_MODE) {
@@ -148,7 +149,7 @@ public class ProbPlayer extends Player {
      * 自明な確定マス(爆弾がある確率が100%)の探索
      */
     protected void searchFixedCells() {
-
+        this.mode = 1;
         while(true) {
             if (board.forEach((here) -> {
                 if (here.isFixed()) return true;
@@ -199,9 +200,10 @@ public class ProbPlayer extends Player {
      * @return boolean 安全マスがあるか
      */
     protected boolean searchSafeCellsComplex() {
+        this.mode = 2;
         if (searchEdges()) {
             int max_size = Math.max(board.boxEdge.size(), board.numEdge.size());
-            double default_probability = (double)countNotFixedBombs() / board.count((i) -> !i.isOpen() & !i.isFixed() && !i.isSafe(), this); // TODO
+            double default_probability = (double)countNotFixedBombs() / board.count((i) -> !i.isOpen() & !i.isFixed() && !i.isSafe(), this);
             linkBoxEdgeToNumEdge();
             bfs_queue = new ArrayDeque<>();
             queueNumEdge(max_size);
@@ -236,44 +238,7 @@ public class ProbPlayer extends Player {
                 return true;
             }
 
-            /*
-            HashMap<BitMap, QuantumBitMap> prob_result = new HashMap<>();
-            for (Pair<BitMap, BitMap> data : edge_bitmap) {
-                if (prob_result.containsKey(data.getValue())) {
-                    prob_result.put(data.getValue(),
-                            QuantumBitMap.and(
-                                    prob_result.get(data.getValue()), // 現在の可能性
-                                    QuantumBitMap.from(data.getKey(), data.getValue(), -1) // 新しい可能性
-                            )
-                    );
-                } else {
-                    prob_result.put(data.getValue(), QuantumBitMap.from(data.getKey(), data.getValue(), -1));
-                }
-            }
-            QuantumBitMap prob_final_result = new QuantumBitMap(max_size, -1);
-            for (BitMap key : prob_result.keySet()) {
-                prob_final_result.and(prob_result.get(key)); // FIXME
-            }
-
-            System.out.println(prob_final_result.toString());
-
-            double min_prob = 1;
-            BoardCell min_cell = null;
-            int k = 0;
-            for (BoardCell cell : board.boxEdge) {
-                if (prob_final_result.getProb(k) < min_prob) {
-                    min_prob = prob_final_result.getProb(k);
-                    min_cell = cell;
-                }
-                k++;
-            }
-
-            if (min_prob < 0.1) {
-                min_cell.setSafe();
-                return true;
-            }
-            */
-
+            this.mode = 3;
             HashMap<BitMap, CountableBitMap> prob_result = new HashMap<>();
             for (Pair<BitMap, BitMap> data : edge_bitmap) {
                 if (prob_result.containsKey(data.getValue())) {
@@ -289,7 +254,7 @@ public class ProbPlayer extends Player {
             }
             CountableBitMap prob_final_result = new CountableBitMap(max_size);
             for (BitMap key : prob_result.keySet()) {
-                prob_final_result.merge(prob_result.get(key)); // FIXME
+                prob_final_result.merge(prob_result.get(key));
             }
 
             double min_prob = 1;
@@ -473,6 +438,7 @@ public class ProbPlayer extends Player {
      * これ以上開けない場合
      */
     protected void fallback() {
+        this.mode = 4;
         BoardIterator iter = new BoardIterator(board, this);
         if (!iter.setXY(0, 0).isOpen() && !iter.setXY(0, 0).isFixed()) {
             iter.open();
@@ -490,6 +456,7 @@ public class ProbPlayer extends Player {
             iter.open();
             return;
         }
+        this.mode = 5;
         int count = board.count((i) -> {
             if (!(i.isOpen() || i.isFixed())) {
                 return true;
@@ -500,6 +467,10 @@ public class ProbPlayer extends Player {
         rand_cnt = rand.nextInt(count);
         if (!board.forEach((i) -> {
             if (!(i.isOpen() || i.isFixed())) {
+                if ((i.getX() == 0 || i.getX() == getWidth() - 1 || i.getY() == 0 || i.getY() == getHeight() - 1) && rand.nextInt(100) < 2) {
+                    i.open();
+                    i.player.rand_cnt = -1;
+                }
                 if (i.player.rand_cnt-- == 0) return i.open();
             }
             return true;

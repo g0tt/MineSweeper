@@ -24,7 +24,7 @@ public class ProbPlayer extends Player {
     static final int TEST_COUNT = 1000; // 正解率テストの試行回数
     static final int LEVEL = 2; // レベル 0 or 1 or 2
     static final int SEED = -1;//950795; // 問題の乱数シード -1でランダム
-    static final int BFS_DEPTH = 4; // 幅優先探索の深さ 4で充分
+    static final int BFS_DEPTH = 6; // 幅優先探索の深さ
     static final double BIAS = 0.014;
 
     private double bias;

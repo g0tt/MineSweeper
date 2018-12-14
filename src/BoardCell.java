@@ -16,7 +16,6 @@ public class BoardCell implements Comparable<BoardCell> {
     public int y;
     private Board board;
     private int num;
-    private double prob;
 
     public BoardCellSet relatedEdges;
 
@@ -49,14 +48,12 @@ public class BoardCell implements Comparable<BoardCell> {
     public boolean fix() {
         if (isFixed() || isOpen()) return false;
         cellType = CellType.Fixed;
-        prob = 100;
         return true;
     }
 
     public boolean setSafe() {
         if (isFixed() || isOpen()) return false;
         cellType = CellType.Safe;
-        prob = 0;
         return true;
     }
 

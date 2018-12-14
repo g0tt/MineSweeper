@@ -28,8 +28,6 @@ public class ProbPlayer extends Player {
     static final int PROB_BFS_DEPTH = 4; // 幅優先探索の深さ
     static final double BIAS = 0.014;
 
-    private double bias;
-
     private int mode;
 
     private int[] statistics;
@@ -72,7 +70,6 @@ public class ProbPlayer extends Player {
         int test_count = TEST_MODE ? TEST_COUNT : 1;
         for (int i = 0; i < test_count; i++) {
             ProbPlayer player = new ProbPlayer();
-            player.bias = BIAS;
             player.statistics = statistics;
 
             MineSweeper mineSweeper = new MineSweeper(LEVEL);
@@ -88,7 +85,7 @@ public class ProbPlayer extends Player {
                 player.statistics[player.mode]++;
             }
             if (TEST_MODE) {
-                player.showProgressBar(i + 1, test_count, String.format("%.1f", clear_count * 100.0 / i) + "%", stdout);
+                player.showProgressBar(i + 1, test_count, String.format("%.2f", clear_count * 100.0 / (i + 1)) + "%", stdout);
             }
         }
         if (TEST_MODE) {
@@ -214,24 +211,48 @@ public class ProbPlayer extends Player {
                 if (!bfs(max_size, BFS_DEPTH)) break;
             }
 
-            HashMap<BitMap, BitMap> abs_result = new HashMap<>();
+            // 全パターンで安全になったマス
+            HashMap<BitMap, BitMap> abs_safe_fragment = new HashMap<>();
             for (Pair<BitMap, BitMap> data : edge_bitmap) {
-                if (abs_result.containsKey(data.getValue())) {
-                    abs_result.put(data.getValue(), BitMap.or(abs_result.get(data.getValue()), data.getKey()));
+                if (abs_safe_fragment.containsKey(data.getValue())) {
+                    abs_safe_fragment.put(data.getValue(), BitMap.or(abs_safe_fragment.get(data.getValue()), data.getKey()));
                 } else {
-                    abs_result.put(data.getValue(), data.getKey());
+                    abs_safe_fragment.put(data.getValue(), data.getKey());
                 }
             }
-            BitMap abs_final_result = new BitMap(max_size);
-            for (BitMap key : abs_result.keySet()) {
-                abs_final_result.or(BitMap.xor(key, abs_result.get(key)));
+            BitMap abs_safe_final = new BitMap(max_size);
+            for (BitMap key : abs_safe_fragment.keySet()) {
+                abs_safe_final.or(BitMap.xor(key, abs_safe_fragment.get(key)));
+            }
+
+            // 全パターンで爆弾になったマス
+            HashMap<BitMap, BitMap> abs_fixed_fragment = new HashMap<>();
+            for (Pair<BitMap, BitMap> data : edge_bitmap) {
+                if (abs_fixed_fragment.containsKey(data.getValue())) {
+                    abs_fixed_fragment.put(data.getValue(), BitMap.and(abs_fixed_fragment.get(data.getValue()), data.getKey()));
+                } else {
+                    abs_fixed_fragment.put(data.getValue(), data.getKey());
+                }
+            }
+            BitMap abs_fixed_final = new BitMap(max_size);
+            for (BitMap key : abs_fixed_fragment.keySet()) {
+                abs_fixed_final.or(abs_fixed_fragment.get(key));
+            }
+
+            // 確実に爆弾があるマスをマーク
+            int k = 0;
+            for (BoardCell cell : board.boxEdge) {
+                if (abs_fixed_final.get(k)) {
+                    cell.fix();
+                }
+                k++;
             }
 
             // 確実に安全なマスがある場合
-            if (!abs_final_result.isZero()) {
-                int k = 0;
+            if (!abs_safe_final.isZero()) {
+                k = 0;
                 for (BoardCell cell : board.boxEdge) {
-                    if (abs_final_result.get(k)) {
+                    if (abs_safe_final.get(k)) {
                         cell.setSafe();
                     }
                     k++;
@@ -263,7 +284,7 @@ public class ProbPlayer extends Player {
 
             double min_prob = 1;
             BoardCell min_cell = null;
-            int k = 0;
+            k = 0;
             for (BoardCell cell : board.boxEdge) {
                 if (prob_final_result.getProb(k) < min_prob) {
                     min_prob = prob_final_result.getProb(k);
@@ -272,7 +293,7 @@ public class ProbPlayer extends Player {
                 k++;
             }
 
-            if (min_prob < default_probability - this.bias) {
+            if (min_prob < default_probability - BIAS) {
                 min_cell.setSafe();
                 return true;
             }

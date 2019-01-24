@@ -9,22 +9,6 @@ public class CountableBitMap {
     private int[] positive_counts;
     private int[] negative_counts;
 
-    public static void main(String[] args) {
-        int[] a = new int[1];
-        a[0] = 1;
-        int[] b = new int[1];
-        b[0] = 0;
-        CountableBitMap a1 = new CountableBitMap(a, b);
-        CountableBitMap a2 = a1.copy();
-        CountableBitMap a3 = a1.copy();
-
-        CountableBitMap b1 = new CountableBitMap(b, a);
-        CountableBitMap b2 = b1.copy();
-        CountableBitMap b3 = b1.copy();
-
-        System.out.println(a1.merge(a2).merge(a3).merge(b1).merge(b2).merge(b3).getProb(0));
-    }
-
     public CountableBitMap(boolean[] bits) {
         int n = bits.length;
         this.positive_counts = new int[n];
@@ -68,7 +52,6 @@ public class CountableBitMap {
         return new CountableBitMap(positive_counts, negative_counts);
     }
 
-    // TODO このへん全部直す
     public CountableBitMap merge(CountableBitMap other) {
         if (length() != other.length()) return null;
         for (int i = 0; i < length(); i++) {

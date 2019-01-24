@@ -21,12 +21,12 @@ public class ProbPlayer extends Player {
      * 設定
      */
     static final boolean TEST_MODE = true; // 正解率をテストするモード
-    static final int TEST_COUNT = 5000; // 正解率テストの試行回数
+    static final int TEST_COUNT = 1000; // 正解率テストの試行回数
     static final int LEVEL = 2; // レベル 0 or 1 or 2
     static final int SEED = -1; // 問題の乱数シード -1でランダム
     static final int BFS_DEPTH = 3; // 幅優先探索の深さ
     static final int PROB_BFS_DEPTH = 4; // 幅優先探索の深さ
-    static final double BIAS = 0.014;
+    static final double BIAS = 0.014; // 非自明定数
 
     private int mode;
 
